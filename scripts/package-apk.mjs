@@ -22,6 +22,26 @@ if (!existsSync(join(DIST, 'index.html'))) {
   process.exit(1)
 }
 
+// Preserve a REAL signed APK (built by the CI Gradle job and committed back
+// to the repo). A signed APK contains META-INF/*.RSA (v1 signature) and a
+// classes.dex larger than 100 KB. Never overwrite it with the web bundle.
+function isRealSignedApk(path) {
+  if (!existsSync(path)) return false
+  try {
+    const buf = readFileSync(path)
+    if (buf.length < 100 * 1024) return false
+    const names = execSync(`unzip -l ${path}`, { encoding: 'utf8' })
+    return /META-INF\/.*\.(RSA|DSA|EC)\b/.test(names) && /classes\.dex/.test(names)
+  } catch { return false }
+}
+if (isRealSignedApk(OUT)) {
+  const buf = readFileSync(OUT)
+  mkdirSync('dist/releases', { recursive: true })
+  writeFileSync(OUT_DIST, buf)
+  console.log(`✓ Real signed APK preserved: ${OUT} (${(buf.length / 1024).toFixed(1)} KB) — copied to dist/`)
+  process.exit(0)
+}
+
 function walk(dir, base = dir) {
   const out = []
   for (const e of readdirSync(dir)) {

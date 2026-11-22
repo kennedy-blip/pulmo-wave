@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -49,18 +52,35 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor Android
-        run: npx cap sync android || echo "Capacitor sync skipped — run npx cap add android locally"
+        run: npx cap sync android
 
       - name: Build Android APK (Gradle)
         working-directory: android
-        run: ./gradlew assembleRelease || echo "Gradle build skipped — APK bundle step will package web assets"
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Verify signed APK
+        run: |
+          APK=$(find android -name "*.apk" -path "*release*" | head -1)
+          test -n "$APK" || { echo "ERROR: no release APK produced"; exit 1; }
+          echo "APK: $APK ($(du -h "$APK" | cut -f1))"
+          unzip -l "$APK" | grep -E "classes.dex|resources.arsc|META-INF/.*\.(RSA|SF)" || { echo "ERROR: APK missing dex/resources/signature"; exit 1; }
 
       - name: Bundle release APK for Vercel
         run: |
           mkdir -p public/releases
-          APK=$(find android -name "*.apk" -path "*release*" 2>/dev/null | head -1 || true)
-          if [ -n "$APK" ]; then cp "$APK" public/releases/pulmowave-release.apk; else echo "APK placeholder — CI will replace with Gradle output" > public/releases/pulmowave-release.apk.txt; fi
+          APK=$(find android -name "*.apk" -path "*release*" | head -1)
+          cp "$APK" public/releases/pulmowave-release.apk
           ls -lh public/releases/
+
+      - name: Commit signed APK back to repo (served by Vercel)
+        run: |
+          git config user.name "pulmo-wave-ci"
+          git config user.email "ci@pulmowave.app"
+          git add public/releases/pulmowave-release.apk
+          if git diff --cached --quiet; then echo "APK unchanged — nothing to commit"; else
+            git commit -m "ci: bundle signed PulmoWave v1.0.0 APK ($(du -h public/releases/pulmowave-release.apk | cut -f1)) [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
