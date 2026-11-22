@@ -1,0 +1,31 @@
+{
+  "name": "pulmo-wave",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
+    "dexie": "^4.0.8",
+    "qrcode": "^1.5.4",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0",
+    "@types/qrcode": "^1.5.5",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.1.10"
+  }
+}
