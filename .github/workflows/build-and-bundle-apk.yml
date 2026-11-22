@@ -52,7 +52,10 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor Android
-        run: npx cap sync android
+        run: |
+          npx cap sync android
+          # Keep the web-bundle placeholder out of the native APK payload
+          rm -rf android/app/src/main/assets/public/releases
 
       - name: Android environment diagnostics
         run: |
@@ -83,15 +86,21 @@ jobs:
 
       - name: Verify signed APK
         run: |
-          APK=$(find android -name "*.apk" -path "*release*" | head -1)
+          APK=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
           test -n "$APK" || { echo "ERROR: no release APK produced"; exit 1; }
           echo "APK: $APK ($(du -h "$APK" | cut -f1))"
-          unzip -l "$APK" | grep -E "classes.dex|resources.arsc|META-INF/.*\.(RSA|SF)" || { echo "ERROR: APK missing dex/resources/signature"; exit 1; }
+          LISTING=$(unzip -l "$APK")
+          echo "$LISTING" | grep -q "META-INF/.*\.RSA" || { echo "ERROR: APK not signed (no META-INF/*.RSA)"; exit 1; }
+          echo "$LISTING" | grep -q "resources.arsc" || { echo "ERROR: APK missing resources.arsc"; exit 1; }
+          DEX=$(echo "$LISTING" | grep "classes.dex" | awk '{print $1}' | head -1)
+          test "$DEX" -gt 100000 || { echo "ERROR: classes.dex too small ($DEX bytes) — not a real build"; exit 1; }
+          echo "OK: signed APK, classes.dex=$DEX bytes" 
 
       - name: Bundle release APK for Vercel
         run: |
           mkdir -p public/releases
-          APK=$(find android -name "*.apk" -path "*release*" | head -1)
+          APK=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          test -n "$APK" || { echo "ERROR: no release APK to bundle"; exit 1; }
           cp "$APK" public/releases/pulmowave-release.apk
           ls -lh public/releases/
 
