@@ -3,7 +3,7 @@
 // Ratios, BODE/Asthma Zone Risk Stratification.
 // Offline mirror: the Vue app embeds identical math in pulmoWasmBridge.ts
 // so the .APK works with zero internet.
-package main
+package handler
 
 import (
 	"encoding/json"
