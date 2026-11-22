@@ -75,7 +75,7 @@ jobs:
         run: |
           git config user.name "pulmo-wave-ci"
           git config user.email "ci@pulmowave.app"
-          git add gradle-output.txt || true
+          git add -f gradle-output.txt || true
           if git diff --cached --quiet; then echo "no diagnostics to commit"; else
             git commit -m "ci: gradle diagnostics [skip ci]"
             git push origin HEAD:main

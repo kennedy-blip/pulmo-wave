@@ -5,12 +5,11 @@ import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.os.Build;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
@@ -56,7 +55,7 @@ public class AudioSpirometryPlugin extends Plugin {
         }
     }
 
-    @com.getcapacitor.annotation.PluginMethod
+    @PluginMethod
     public void requestPermission(PluginCall call) {
         if (hasPermission()) {
             call.resolve();
@@ -65,7 +64,7 @@ public class AudioSpirometryPlugin extends Plugin {
         }
     }
 
-    @com.getcapacitor.annotation.PluginMethod
+    @PluginMethod
     public void startCapture(PluginCall call) {
         if (!hasPermission()) {
             requestPermissionForAlias("microphone", call, "onPermissionResult");
@@ -85,10 +84,8 @@ public class AudioSpirometryPlugin extends Plugin {
             call.reject("AudioRecord init failed");
             return;
         }
-        // Disable automatic gain control so exhalation peaks are preserved.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            try { audioRecord.setGainMap(null); } catch (Exception ignored) {}
-        }
+        // AGC / noise-suppression / echo-cancellation are NOT requested:
+        // VOICE_RECOGNITION raw capture keeps exhalation peaks unclipped.
         capturing = true;
         audioRecord.startRecording();
         captureThread = new Thread(() -> {
@@ -111,7 +108,7 @@ public class AudioSpirometryPlugin extends Plugin {
         call.resolve(ret);
     }
 
-    @com.getcapacitor.annotation.PluginMethod
+    @PluginMethod
     public void stopCapture(PluginCall call) {
         capturing = false;
         if (audioRecord != null) {
@@ -136,7 +133,7 @@ public class AudioSpirometryPlugin extends Plugin {
         call.resolve(ret);
     }
 
-    @com.getcapacitor.annotation.PluginMethod
+    @PluginMethod
     public void getStatus(PluginCall call) {
         JSObject ret = new JSObject();
         ret.put("capturing", capturing);

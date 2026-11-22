@@ -3,3 +3,4 @@ dist/
 src/wasm/pkg/
 *.local
 .DS_Store
+gradle-output.txt
