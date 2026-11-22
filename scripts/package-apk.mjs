@@ -25,13 +25,36 @@ if (!existsSync(join(DIST, 'index.html'))) {
 // Preserve a REAL signed APK (built by the CI Gradle job and committed back
 // to the repo). A signed APK contains META-INF/*.RSA (v1 signature) and a
 // classes.dex larger than 100 KB. Never overwrite it with the web bundle.
+// Parse ZIP entry names from the central directory (no external tools).
+function zipEntryNames(buf) {
+  const names = []
+  // Find End Of Central Directory record (scan last 64 KB)
+  let eocd = -1
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break }
+  }
+  if (eocd < 0) return names
+  const count = buf.readUInt16LE(eocd + 10)
+  let off = buf.readUInt32LE(eocd + 16)
+  for (let n = 0; n < count; n++) {
+    if (buf.readUInt32LE(off) !== 0x02014b50) break
+    const nameLen = buf.readUInt16LE(off + 28)
+    const extraLen = buf.readUInt16LE(off + 30)
+    const commentLen = buf.readUInt16LE(off + 32)
+    names.push(buf.toString('utf8', off + 46, off + 46 + nameLen))
+    off += 46 + nameLen + extraLen + commentLen
+  }
+  return names
+}
 function isRealSignedApk(path) {
   if (!existsSync(path)) return false
   try {
     const buf = readFileSync(path)
     if (buf.length < 100 * 1024) return false
-    const names = execSync(`unzip -l ${path}`, { encoding: 'utf8' })
-    return /META-INF\/.*\.(RSA|DSA|EC)\b/.test(names) && /classes\.dex/.test(names)
+    const names = zipEntryNames(buf)
+    const signed = names.some((n) => /^META-INF\/[^/]+\.(RSA|DSA|EC)$/.test(n))
+    const hasDex = names.some((n) => /^classes\d*\.dex$/.test(n))
+    return signed && hasDex
   } catch { return false }
 }
 if (isRealSignedApk(OUT)) {
