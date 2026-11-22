@@ -54,9 +54,32 @@ jobs:
       - name: Sync Capacitor Android
         run: npx cap sync android
 
+      - name: Android environment diagnostics
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          java -version 2>&1
+          ls "$ANDROID_HOME/platforms" 2>/dev/null || ls /usr/local/lib/android/sdk/platforms 2>/dev/null || echo "no platforms dir"
+          ls android/app/src/main/assets/public/ | head -5
+
       - name: Build Android APK (Gradle)
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          set +e
+          ./gradlew assembleRelease --no-daemon --stacktrace > ../gradle-output.txt 2>&1
+          code=$?
+          tail -60 ../gradle-output.txt
+          exit $code
+
+      - name: Commit Gradle diagnostics on failure
+        if: failure()
+        run: |
+          git config user.name "pulmo-wave-ci"
+          git config user.email "ci@pulmowave.app"
+          git add gradle-output.txt || true
+          if git diff --cached --quiet; then echo "no diagnostics to commit"; else
+            git commit -m "ci: gradle diagnostics [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: Verify signed APK
         run: |
