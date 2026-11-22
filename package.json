@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "vue-tsc --noEmit && vite build && node scripts/package-apk.mjs",
     "preview": "vite preview",
     "cap:sync": "npx cap sync",
-    "cap:open": "npx cap open android"
+    "cap:open": "npx cap open android",
+    "package:apk": "node scripts/package-apk.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.0",
